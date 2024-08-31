@@ -1,174 +1,156 @@
 #include "cipher.h"
 using namespace std;
 
-int main(int argc, char* argv[]) {
-    try {
-        // Check if the command line arguments are valid
-        checkArguments(argc, argv);
+int main(int argc, char *argv[])
+{
+	try
+	{
+		validateInputs(argc, argv);
 
-        // Retrieve the type of cipher function (Block or Stream) and mode of operation (Encrypt or Decrypt)
-        char functionType = argv[1][0];  // 'B' for Block, 'S' for Stream
-        char mode = argv[5][0];  // 'E' for Encrypt, 'D' for Decrypt
+		char cipherType = argv[1][0];
+		char operationMode = argv[5][0];
 
-        // Read the input and key files
-        vector<char> input = readFile(argv[2]);  // Input data
-        vector<char> key = readFile(argv[4]);    // Encryption/Decryption key
-        vector<char> output;
+		vector<char> data = readData(argv[2]);
+		vector<char> key = readData(argv[4]);
+		vector<char> result;
 
-        // If the input file is empty, write an empty output file and exit
-        if (input.empty()) {
-            writeFile(argv[3], output);
-            return 0;
-        }
-
-        // Process the input data using the specified cipher function
-        if (functionType == 'B') {
-            output = processBlockCipher(input, key, mode);
-        } else if (functionType == 'S') {
-            output = processStreamCipher(input, key);
-        }
-
-        // Write the processed data to the output file
-        writeFile(argv[3], output);
-    } catch (const exception& e) {
-        // Catch and display any errors
-        cerr << "Error: " << e.what() << endl;
-        return 1;
-    }
-
-    return 0;
-}
-
-void checkArguments(int argc, char* argv[]) {
-    // Validate the number of command line arguments
-    if (argc != 6) {
-        throw runtime_error("Incorrect number of arguments");
-    }
-    // Validate the cipher function type
-    if (argv[1][0] != 'B' && argv[1][0] != 'S') {
-        throw runtime_error("First argument must be 'B' or 'S'");
-    }
-    // Validate the mode of operation
-    if (argv[5][0] != 'E' && argv[5][0] != 'D') {
-        throw runtime_error("Fifth argument must be 'E' or 'D'");
-    }
-}
-
-vector<char> readFile(const string& filename) {
-    // Open the file and read its contents into a vector of characters
-    ifstream file(filename, ios::binary);
-    if (!file) {
-        throw runtime_error("File " + filename + " not found");
-    }
-    return vector<char>((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
-}
-
-void writeFile(const string& filename, const vector<char>& data) {
-    // Open the file and write the data to it
-    ofstream file(filename, ios::binary);
-    if (!file) {
-        throw runtime_error("Unable to open file " + filename);
-    }
-    file.write(data.data(), data.size());
-}
-
-vector<char> processBlockCipher(const vector<char>& input, const vector<char>& key, char mode) {
-	vector<char> output;
-	if (mode == 'E') {
-		// Encrypt the input data using the key
-		size_t blockStart = 0;
-		while (blockStart < input.size()) {
-			vector<char> block(input.begin() + blockStart, input.begin() + min(blockStart + key.size(), input.size()));
-
-			// Pad the block if needed
-			if (block.size() < key.size()) {
-				for (size_t i = block.size(); i < key.size(); i++) {
-					block.push_back(0x81);
-				}
-			}
-
-			// XOR the block with the key
-			for (size_t j = 0; j < block.size(); j++) {
-				block[j] ^= key[j];
-			}
-
-			// Swap algorithm
-    		vector<char>::iterator start = block.begin();
-			vector<char>::iterator end = block.end() - 1;
-			while (start < end) {
-				for (char byte : key) {
-					bool swap = byte % 2;
-					if (swap) {
-						iter_swap(start, end);
-						end--;
-					}
-					start++;
-					if (start >= end) {
-						break;
-					}
-				}
-			}
-
-			// Append the encrypted block to the output and move to next block
-			output.insert(output.end(), block.begin(), block.end());
-			blockStart += key.size();
+		if (data.empty())
+		{
+			saveData(argv[3], result);
+			return 0;
 		}
 
+		if (cipherType == 'B')
+		{
+			result = executeBlockCipher(data, key, operationMode);
+		}
+		else if (cipherType == 'S')
+		{
+			result = executeStreamCipher(data, key);
+		}
+
+		saveData(argv[3], result);
+	}
+	catch (const exception &e)
+	{
+		cerr << "Error: " << e.what() << endl;
+		return 1;
 	}
 
-	else if (mode == 'D') {
-		// Decrypt the input data using the key
-		size_t blockStart = 0;
-		while (blockStart < input.size()) {
-			vector<char> block(input.begin() + blockStart, input.begin() + min(blockStart + key.size(), input.size()));
+	return 0;
+}
 
-			// Reverse the Swap algorithm
-			vector<char>::iterator start = block.end() - 1;
-			vector<char>::iterator end = block.begin();
-			while (start > end) {
-				for (char byte : key) {
-					bool swap = byte % 2;
-					if (swap) {
-						iter_swap(start, end);
-						start--;
-					}
-					end++;
-					if (start <= end) {
-						break;
-					}
-				}
+void validateInputs(int argc, char *argv[])
+{
+	if (argc != 6)
+	{
+		throw runtime_error("Invalid argument count");
+	}
+	if (argv[1][0] != 'B' && argv[1][0] != 'S')
+	{
+		throw runtime_error("Invalid cipher type");
+	}
+	if (argv[5][0] != 'E' && argv[5][0] != 'D')
+	{
+		throw runtime_error("Invalid operation mode");
+	}
+}
+
+vector<char> readData(const string &filename)
+{
+	ifstream fileStream(filename, ios::binary);
+	if (!fileStream)
+	{
+		throw runtime_error("Cannot open file " + filename);
+	}
+	return vector<char>((istreambuf_iterator<char>(fileStream)), istreambuf_iterator<char>());
+}
+
+void saveData(const string &filename, const vector<char> &data)
+{
+	ofstream fileStream(filename, ios::binary);
+	if (!fileStream)
+	{
+		throw runtime_error("Failed to open file " + filename);
+	}
+	fileStream.write(data.data(), data.size());
+}
+
+vector<char> executeBlockCipher(const vector<char> &data, const vector<char> &key, char mode)
+{
+	vector<char> result;
+	size_t blockOffset = 0;
+
+	while (blockOffset < data.size())
+	{
+		vector<char> block(data.begin() + blockOffset, data.begin() + min(blockOffset + key.size(), data.size()));
+
+		if (mode == 'E')
+		{
+			if (block.size() < key.size())
+			{
+				block.resize(key.size(), 0x81);
 			}
-
-			// XOR the block with the key
-			for (size_t j = 0; j < block.size(); j++) {
-				block[j] ^= key[j];
+			for (size_t i = 0; i < block.size(); ++i)
+			{
+				block[i] ^= key[i];
 			}
-
-			// Remove padding if necessary
-			while (!block.empty() && block.back() == 0x81) {
+			reverseBlockWithKey(block, key);
+		}
+		else if (mode == 'D')
+		{
+			reverseBlockWithKey(block, key);
+			for (size_t i = 0; i < block.size(); ++i)
+			{
+				block[i] ^= key[i];
+			}
+			while (!block.empty() && block.back() == 0x81)
+			{
 				block.pop_back();
 			}
-
-			// Append the decrypted block to the output and move to next block
-			output.insert(output.end(), block.begin(), block.end());
-			blockStart += key.size();
 		}
 
+		result.insert(result.end(), block.begin(), block.end());
+		blockOffset += key.size();
 	}
 
-    return output;
+	return result;
 }
 
-vector<char> processStreamCipher(const vector<char>& input, const vector<char>& key) {
-    vector<char> output;
-    size_t i = 0; // Key index
-    for (auto c : input) {
-        // XOR each byte of the input with the corresponding byte of the key
-        output.push_back(c ^ key[i]);
+void reverseBlockWithKey(vector<char> &block, const vector<char> &key)
+{
+	auto start = block.begin();
+	auto end = block.end() - 1;
 
-        // Increment key index and wrap around if it reaches the end of the key
-        i = (i + 1) % key.size();
-    }
+	while (start < end)
+	{
+		for (char k : key)
+		{
+			bool swap = k % 2;
+			if (swap)
+			{
+				iter_swap(start, end);
+				end--;
+			}
+			start++;
+			if (start >= end)
+			{
+				break;
+			}
+		}
+	}
+}
 
-    return output;
+vector<char> executeStreamCipher(const vector<char> &data, const vector<char> &key)
+{
+	vector<char> result;
+	size_t keyIndex = 0;
+
+	for (char byte : data)
+	{
+		result.push_back(byte ^ key[keyIndex]);
+		keyIndex = (keyIndex + 1) % key.size();
+	}
+
+	return result;
 }
