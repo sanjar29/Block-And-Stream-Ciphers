@@ -119,6 +119,6 @@ vector<char> reading_file(const string &filename)
 {
 	ifstream file(filename, ios::binary);
 	if (!file)
-		throw runtime_error("Input File Does Not Exist");
+		throw runtime_error(filename + " File Does Not Exist");
 	return vector<char>((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
 }
