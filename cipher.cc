@@ -1,4 +1,9 @@
 #include "cipher.h"
+#include <iostream>
+#include <fstream>
+#include <stdexcept>
+#include <vector>
+#include <string>
 
 using namespace std;
 
@@ -31,6 +36,20 @@ void output_to_the_file(const string &filename, const vector<char> &data)
 		throw runtime_error("Output File Could Not Be Created");
 	file.write(data.data(), data.size());
 }
+
+vector<char> reading_file(const string &filename, const string &file_type)
+{
+	ifstream file(filename, ios::binary);
+	if (!file)
+	{
+		if (file_type == "input")
+			throw runtime_error("Input File Does Not Exist");
+		else if (file_type == "key")
+			throw runtime_error("Key File Does Not Exist");
+	}
+	return vector<char>((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+}
+
 int main(int argc, char *argv[])
 {
 	try
@@ -38,8 +57,8 @@ int main(int argc, char *argv[])
 		checkArgumentCorrectness(argc, argv);
 		char functionType = argv[1][0];
 		char mode = argv[5][0];
-		vector<char> input = reading_file(argv[2]);
-		vector<char> key = reading_file(argv[4]);
+		vector<char> input = reading_file(argv[2], "input");
+		vector<char> key = reading_file(argv[4], "key");
 		vector<char> output;
 		if (input.empty())
 		{
@@ -66,6 +85,7 @@ vector<char> bloc_cipher_input_validator(const vector<char> &input, const vector
 	const size_t BLOCK_SIZE = 16;
 	const char PAD_BYTE = 0x81;
 	if (mode == 'E')
+	{
 		for (size_t blockStart = 0; blockStart < input.size(); blockStart += BLOCK_SIZE)
 		{
 			vector<char> block(input.begin() + blockStart, input.begin() + min(blockStart + BLOCK_SIZE, input.size()));
@@ -89,7 +109,9 @@ vector<char> bloc_cipher_input_validator(const vector<char> &input, const vector
 				}
 			result.insert(result.end(), block.begin(), block.end());
 		}
+	}
 	else if (mode == 'D')
+	{
 		for (size_t blockStart = 0; blockStart < input.size(); blockStart += BLOCK_SIZE)
 		{
 			vector<char> block(input.begin() + blockStart, input.begin() + min(blockStart + BLOCK_SIZE, input.size()));
@@ -113,12 +135,6 @@ vector<char> bloc_cipher_input_validator(const vector<char> &input, const vector
 				block.pop_back();
 			result.insert(result.end(), block.begin(), block.end());
 		}
+	}
 	return result;
-}
-vector<char> reading_file(const string &filename)
-{
-	ifstream file(filename, ios::binary);
-	if (!file)
-		throw runtime_error("Input File Does Not Exist");
-	return vector<char>((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
 }
