@@ -1,181 +1,121 @@
 #include "cipher.h"
 using namespace std;
 
-int main(int argc, char *argv[])
+vector<char> processBlockCipher(const vector<char> &input_data, const vector<char> &key_data, char operation_mode)
+{
+	vector<char> result_data;
+	if (operation_mode == 'E')
+		for (size_t block_start = 0; block_start < input_data.size(); block_start += key_data.size())
+		{
+			vector<char> block(input_data.begin() + block_start, input_data.begin() + min(block_start + key_data.size(), input_data.size()));
+			if (block.size() < key_data.size())
+				for (size_t i = block.size(); i < key_data.size(); i++)
+					block.push_back(0x81);
+			for (size_t j = 0; j < block.size(); j++)
+				block[j] ^= key_data[j];
+			vector<char>::iterator start = block.begin();
+			vector<char>::iterator end = block.end() - 1;
+			while (start < end)
+				for (char byte : key_data)
+				{
+					if (byte % 2)
+					{
+						iter_swap(start, end);
+						end = end - 1;
+					}
+					start = start + 1;
+					if (start >= end)
+						break;
+				}
+			result_data.insert(result_data.end(), block.begin(), block.end());
+		}
+
+	else if (operation_mode == 'D')
+	{
+		for (size_t block_start = 0; block_start < input_data.size(); block_start += key_data.size())
+		{
+			vector<char> block(input_data.begin() + block_start, input_data.begin() + min(block_start + key_data.size(), input_data.size()));
+			vector<char>::iterator start = block.end() - 1;
+			vector<char>::iterator end = block.begin();
+			while (start > end)
+				for (char byte : key_data)
+				{
+					if (byte % 2)
+					{
+						iter_swap(start, end);
+						start = start - 1;
+					}
+					end = end + 1;
+					if (start <= end)
+						break;
+				}
+			for (size_t j = 0; j < block.size(); j++)
+				block[j] ^= key_data[j];
+			while (!block.empty() && block.back() == 0x81)
+				block.pop_back();
+			result_data.insert(result_data.end(), block.begin(), block.end());
+		}
+	}
+	return result_data;
+}
+void argumentValidation(int arg_count, char *args[])
+{
+	if (arg_count != 6)
+		throw runtime_error("Incorrect number of arguments");
+	if (args[1][0] != 'B' && args[1][0] != 'S')
+		throw runtime_error("First argument must be 'B' or 'S'");
+	if (args[5][0] != 'E' && args[5][0] != 'D')
+		throw runtime_error("Fifth argument must be 'E' or 'D'");
+}
+int main(int arg_count, char *args[])
 {
 	try
 	{
-		argumentValidation(argc, argv);
-		char functionType = argv[1][0];
-		char mode = argv[5][0];
-
-		vector<char> input = readFile(argv[2]);
-		vector<char> key = readFile(argv[4]);
-		vector<char> output;
-
-		if (input.empty())
-		{
-			writeFile(argv[3], output);
-			return 0;
-		}
-
-		if (functionType == 'B')
-		{
-			output = processBlockCipher(input, key, mode);
-		}
-		else if (functionType == 'S')
-		{
-			output = processStreamCipher(input, key);
-		}
-
-		writeFile(argv[3], output);
+		argumentValidation(arg_count, args);
+		char func_type = args[1][0];
+		char operation_mode = args[5][0];
+		vector<char> input_data = readFile(args[2]);
+		vector<char> key_data = readFile(args[4]);
+		vector<char> result_data;
+		if (input_data.empty())
+			writeFile(args[3], result_data);
+		if (func_type == 'B')
+			result_data = processBlockCipher(input_data, key_data, operation_mode);
+		else if (func_type == 'S')
+			result_data = processStreamCipher(input_data, key_data);
+		writeFile(args[3], result_data);
 	}
-	catch (const exception &e)
+	catch (const exception &err)
 	{
-		cerr << "Error: " << e.what() << endl;
+		cerr << "Error: " << err.what() << endl;
 		return 1;
 	}
-
 	return 0;
-}
-
-void argumentValidation(int argc, char *argv[])
-{
-	if (argc != 6)
-	{
-		throw runtime_error("Incorrect number of arguments");
-	}
-	if (argv[1][0] != 'B' && argv[1][0] != 'S')
-	{
-		throw runtime_error("First argument must be 'B' or 'S'");
-	}
-	if (argv[5][0] != 'E' && argv[5][0] != 'D')
-	{
-		throw runtime_error("Fifth argument must be 'E' or 'D'");
-	}
 }
 
 vector<char> readFile(const string &filename)
 {
-	ifstream file(filename, ios::binary);
-	if (!file)
-	{
+	ifstream file_stream(filename, ios::binary);
+	if (!file_stream)
 		throw runtime_error("File " + filename + " not found");
-	}
-	return vector<char>((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+	return vector<char>((istreambuf_iterator<char>(file_stream)), istreambuf_iterator<char>());
 }
 
 void writeFile(const string &filename, const vector<char> &data)
 {
-	ofstream file(filename, ios::binary);
-	if (!file)
-	{
+	ofstream file_stream(filename, ios::binary);
+	if (!file_stream)
 		throw runtime_error("Unable to open file " + filename);
-	}
-	file.write(data.data(), data.size());
+	file_stream.write(data.data(), data.size());
 }
-
-vector<char> processBlockCipher(const vector<char> &input, const vector<char> &key, char mode)
+vector<char> processStreamCipher(const vector<char> &input_data, const vector<char> &key_data)
 {
-	vector<char> output;
-	if (mode == 'E')
+	vector<char> result_data;
+	size_t key_index = 0;
+	for (auto c : input_data)
 	{
-		size_t blockStart = 0;
-		while (blockStart < input.size())
-		{
-			vector<char> block(input.begin() + blockStart, input.begin() + min(blockStart + key.size(), input.size()));
-
-			if (block.size() < key.size())
-			{
-				for (size_t i = block.size(); i < key.size(); i++)
-				{
-					block.push_back(0x81);
-				}
-			}
-
-			for (size_t j = 0; j < block.size(); j++)
-			{
-				block[j] ^= key[j];
-			}
-
-			vector<char>::iterator start = block.begin();
-			vector<char>::iterator end = block.end() - 1;
-			while (start < end)
-			{
-				for (char byte : key)
-				{
-					bool swap = byte % 2;
-					if (swap)
-					{
-						iter_swap(start, end);
-						end--;
-					}
-					start++;
-					if (start >= end)
-					{
-						break;
-					}
-				}
-			}
-
-			output.insert(output.end(), block.begin(), block.end());
-			blockStart += key.size();
-		}
+		result_data.push_back(c ^ key_data[key_index]);
+		key_index = (key_index + 1) % key_data.size();
 	}
-	else if (mode == 'D')
-	{
-		size_t blockStart = 0;
-		while (blockStart < input.size())
-		{
-			vector<char> block(input.begin() + blockStart, input.begin() + min(blockStart + key.size(), input.size()));
-
-			vector<char>::iterator start = block.end() - 1;
-			vector<char>::iterator end = block.begin();
-			while (start > end)
-			{
-				for (char byte : key)
-				{
-					bool swap = byte % 2;
-					if (swap)
-					{
-						iter_swap(start, end);
-						start--;
-					}
-					end++;
-					if (start <= end)
-					{
-						break;
-					}
-				}
-			}
-
-			for (size_t j = 0; j < block.size(); j++)
-			{
-				block[j] ^= key[j];
-			}
-
-			while (!block.empty() && block.back() == 0x81)
-			{
-				block.pop_back();
-			}
-
-			output.insert(output.end(), block.begin(), block.end());
-			blockStart += key.size();
-		}
-	}
-
-	return output;
-}
-
-vector<char> processStreamCipher(const vector<char> &input, const vector<char> &key)
-{
-	vector<char> output;
-	size_t i = 0;
-	for (auto c : input)
-	{
-		output.push_back(c ^ key[i]);
-		i = (i + 1) % key.size();
-	}
-
-	return output;
+	return result_data;
 }
