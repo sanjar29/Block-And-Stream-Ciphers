@@ -5,8 +5,7 @@ int main(int argc, char *argv[])
 {
 	try
 	{
-		checkArguments(argc, argv);
-
+		argumentValidation(argc, argv);
 		char functionType = argv[1][0];
 		char mode = argv[5][0];
 
@@ -40,7 +39,7 @@ int main(int argc, char *argv[])
 	return 0;
 }
 
-void checkArguments(int argc, char *argv[])
+void argumentValidation(int argc, char *argv[])
 {
 	if (argc != 6)
 	{
