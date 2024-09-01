@@ -63,9 +63,9 @@ void argumentValidation(int arg_count, char *args[])
 	if (arg_count != 6)
 		throw runtime_error("Incorrect number of arguments");
 	if (args[1][0] != 'B' && args[1][0] != 'S')
-		throw runtime_error("First argument must be 'B' or 'S'");
+		throw runtime_error("Invalid Function Type");
 	if (args[5][0] != 'E' && args[5][0] != 'D')
-		throw runtime_error("Fifth argument must be 'E' or 'D'");
+		throw runtime_error("nvalid Mode Type");
 }
 int main(int arg_count, char *args[])
 {
@@ -87,7 +87,7 @@ int main(int arg_count, char *args[])
 	}
 	catch (const exception &err)
 	{
-		cerr << "Error: " << err.what() << endl;
+		cerr << err.what() << endl;
 		return 1;
 	}
 	return 0;
@@ -97,7 +97,7 @@ vector<char> readFile(const string &filename)
 {
 	ifstream file_stream(filename, ios::binary);
 	if (!file_stream)
-		throw runtime_error("File " + filename + " not found");
+		throw runtime_error(filename + " File Does Not Exist");
 	return vector<char>((istreambuf_iterator<char>(file_stream)), istreambuf_iterator<char>());
 }
 
@@ -105,7 +105,7 @@ void writeFile(const string &filename, const vector<char> &data)
 {
 	ofstream file_stream(filename, ios::binary);
 	if (!file_stream)
-		throw runtime_error("Unable to open file " + filename);
+		throw runtime_error("");
 	file_stream.write(data.data(), data.size());
 }
 vector<char> processStreamCipher(const vector<char> &input_data, const vector<char> &key_data)
